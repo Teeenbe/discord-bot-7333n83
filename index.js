@@ -1,12 +1,17 @@
 /* Modules */
 const Discord = require("discord.js");
 
+/* Models */
+const addOrRemovePingSquadRole = require("./models/addOrRemovePingSquadRole");
+
 /* Client */
 const bot = new Discord.Client();
 
 /* Environment variables */
 const TOKEN = process.env.TOKEN;
 const LOG_CHANNEL_ID = process.env.LOG_CHANNEL_ID;
+
+/* Teeenbe personal server log channel */
 let botLogChannel;
 
 bot.login(TOKEN);
@@ -21,35 +26,6 @@ bot.once("ready", () => {
    give PingSquad role to author if message content is '!opt-in' and remove role if
    message content is '!opt-out'. Message user, confirming role addition/removal */
 
-function addOrRemovePingSquadRole(message, member, role) {
-  const optInOrOutEmoji = message.content === "!opt-in" ? "✅" : "❌";
-  const optInOrOutDesc =
-    message.content === "!opt-in"
-      ? ["opted into", "now", "disable", "!opt-out"]
-      : ["opted out of", "no longer", "re-enable", "!opt-in"];
-
-  const optInOutDm = new Discord.MessageEmbed()
-    .setColor(0xddaa0b)
-    .setTitle(`GizzyGazza video and Twitch pings  ${optInOrOutEmoji}`)
-    .setDescription(
-      `You've **${optInOrOutDesc[0]}** pings for GizzyGazza videos and Twitch streams! You will **${optInOrOutDesc[1]}** be notified when any go live.\n--\nYou can ${optInOrOutDesc[2]} this at any time by typing \`${optInOrOutDesc[3]}\` in the same channel.`
-    )
-    .setThumbnail(message.guild.iconURL());
-
-  if (message.content === "!opt-in") {
-    member.roles.add(role);
-    message.delete({ timeout: 3000 });
-    member.send(optInOutDm);
-    return;
-  }
-  if (message.content === "!opt-out") {
-    member.roles.remove(role);
-    message.delete({ timeout: 3000 });
-    member.send(optInOutDm);
-    return;
-  }
-}
-
 bot.on("message", (msg) => {
   try {
     if (
@@ -62,9 +38,15 @@ bot.on("message", (msg) => {
       const member = msg.guild.members.cache.get(msg.author.id);
 
       addOrRemovePingSquadRole(msg, member, pingSquadRole);
-      return;
     }
-    msg.delete({ timeout: 1000 });
+    // Deletes message from GizzyGazza's #opt-in-out after 1000ms if not an opt-in/out command
+    if (
+      msg.channel.id === "547236933726896138" &&
+      msg.content !== "!opt-in" &&
+      msg.content !== "!opt-out"
+    ) {
+      msg.delete({ timeout: 1000 });
+    }
   } catch (err) {
     console.error(err);
     botLogChannel.send(err);
