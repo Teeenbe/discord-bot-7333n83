@@ -2,10 +2,10 @@
 const Discord = require("discord.js");
 
 /* Models */
-const addOrRemovePingSquadRole = require("./models/addOrRemovePingSquadRole");
+const { addRole, removeRole } = require("./models/addOrRemoveRole");
 
 /* Client */
-const bot = new Discord.Client();
+const bot = new Discord.Client({ partials: ["MESSAGE", "REACTION"] });
 
 /* Environment variables */
 const TOKEN = process.env.TOKEN;
@@ -22,40 +22,38 @@ bot.once("ready", () => {
   botLogChannel = bot.channels.cache.get(LOG_CHANNEL_ID);
 });
 
-/* If 'message' event triggered in #opt-in-out channel on GizzyGazza's server,
-   give PingSquad role to author if message content is '!opt-in' and remove role if
-   message content is '!opt-out'. Message user, confirming role addition/removal */
+/* Reaction add event calls addRole() for role corresponding to that reaction and adds to
+  user who reacted. Reaction remove event calls removeRole() for role corresponding to that
+  reaction and removes from user that reacted */
 
-bot.on("message", (msg) => {
-  try {
-    if (
-      msg.channel.id === "547236933726896138" &&
-      msg.content.startsWith("!opt")
-    ) {
-      const pingSquadRole = msg.guild.roles.cache.find(
-        (role) => role.name.toLowerCase() === "pingsquad"
-      );
-      const member = msg.guild.members.cache.get(msg.author.id);
+bot.on("messageReactionAdd", (reaction, user) => {
+  const guild = reaction.message.guild;
+  const member = guild.members.cache.get(user.id);
+  if (
+    guild.id === "268538200383946752" &&
+    reaction.message.id === "790741183302467594"
+  ) {
+    addRole(guild, member, reaction);
+  }
+});
 
-      addOrRemovePingSquadRole(msg, member, pingSquadRole);
-    }
-    // Deletes message from GizzyGazza's #opt-in-out after 1000ms if not an opt-in/out command
-    if (
-      msg.channel.id === "547236933726896138" &&
-      msg.content !== "!opt-in" &&
-      msg.content !== "!opt-out"
-    ) {
-      msg.delete({ timeout: 1000 });
-    }
-  } catch (err) {
-    console.error(err);
-    botLogChannel.send(err);
+bot.on("messageReactionRemove", (reaction, user) => {
+  const guild = reaction.message.guild;
+  const member = guild.members.cache.get(user.id);
+  if (
+    guild.id === "268538200383946752" &&
+    reaction.message.id === "790741183302467594"
+  ) {
+    removeRole(guild, member, reaction);
   }
 });
 
 /* Send welcome message in GizzyGazza's #public on user joining guild */
 bot.on("guildMemberAdd", (member) => {
   if (member.guild.id === "268538200383946752") {
+    bot.channels.cache
+      .get("628675608368381953")
+      .send("Someone joined GG Discord");
     bot.channels.cache.get("268538200383946752").send("Welcome! :wave:");
   }
 });
