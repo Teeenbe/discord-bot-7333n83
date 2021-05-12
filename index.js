@@ -27,108 +27,137 @@ bot.once("ready", () => {
 });
 
 bot.on("message", async (msg) => {
-  if (msg.author.bot || msg.content !== "|rmsg create") {
-    return;
-  }
-
-  /* Data about message that will be stored in the database entry. */
-  const messageData = {
-    id: 0,
-    channelId: 0,
-    reactions: [],
-    roles: [],
-  };
-
-  /* If 'cancel' is received, value is changed to true and early return. */
-  let cancelled = false;
-
-  /* Filter used in message collectors. Messages will not be collected if condition is not met. */
-  const filter = (m) => m.author.id === msg.author.id;
-
-  const [instructions, embed] = await setMessageText(filter, msg.channel);
-  const embedPreview = await msg.channel.send(`${instructions}\n\n`, { embed });
-
-  /*
-  Loop awaits a message from the user containing a reaction and a role name. Splits the message
-  to store each in their respective arrays within the messageData object. Will then update the
-  embed description with the added reaction and role name pairing by mapping through the
-  reactions array. 'Done' and 'cancel' both break from the loop, with 'cancel' setting a boolean
-  value, which results in an early return.
-  */
-  while (messageData.reactions.length < 16) {
-    const userMessage = await msg.channel.awaitMessages(filter, { max: 1 });
-    const response = userMessage.first().content;
-
-    if (response.toLowerCase() === "done") {
-      console.log("DONE");
-      break;
-    }
-    if (response.toLowerCase() === "cancel") {
-      cancelled = true;
-      console.log("CANCELLED: " + cancelled);
-      break;
-    }
-    /* If the space is omitted, the reaction and role can't be separated - error message and continue to next iteration */
-    if (response.split(" ").length < 2) {
-      const errorMsg = await msg.channel.send(
-        "Incorrect emoji and role pairing. Please write it in the format `:emoji: roleName`\nRemember the space between the two!"
-      );
-      errorMsg.delete({ timeout: 10000 });
-      continue;
+  try {
+    if (msg.author.bot || msg.content !== "|rmsg create") {
+      return;
     }
 
-    /* Expected message format: `:emojiName: role name here` */
-    const reactionAndRole = response.split(" ");
-    const reaction = reactionAndRole[0];
-    const roleNameArray = reactionAndRole.slice(1, reactionAndRole.length);
-    const roleName = roleNameArray.join(" ");
+    /* Data about message that will be stored in the database entry. */
+    const messageData = {
+      id: 0,
+      channelId: 0,
+      reactions: [],
+      roles: [],
+    };
 
-    messageData.reactions.push(reaction);
-    messageData.roles.push(roleName);
+    /* If 'cancel' is received, value is changed to true and early return. */
+    let cancelled = false;
 
-    embed.setDescription(`${embed.description}\n${reaction} - ${roleName}`);
-    embedPreview.edit(embed);
-    embedPreview.react(reaction);
-  }
+    /* Filter used in message collectors. Messages will not be collected if condition is not met. */
+    const filter = (m) => m.author.id === msg.author.id;
 
-  if (cancelled) {
-    msg.channel.send("Message creation cancelled.");
-    return;
-  }
+    const [instructions, embed] = await setMessageText(filter, msg.channel);
+    const embedPreview = await msg.channel.send(`${instructions}\n\n`, {
+      embed,
+    });
 
-  /*
-  Requests that the user specifies a channel to send the embed to. Collects next user message
-  which should mention the channel or contain its ID. Embed then sent to given channel and
-  reactions added to it.
-  */
-  msg.channel.send(
-    "Which channel would you like me to send it to? Mention/link it or paste the channel ID."
-  );
+    /*
+    Loop awaits a message from the user containing a reaction and a role name. Splits the message
+    to store each in their respective arrays within the messageData object. Will then update the
+    embed description with the added reaction and role name pairing by mapping through the
+    reactions array. 'Done' and 'cancel' both break from the loop, with 'cancel' setting a boolean
+    value, which results in an early return.
+    */
+    while (messageData.reactions.length < 16) {
+      const userMessage = await msg.channel.awaitMessages(filter, { max: 1 });
+      const response = userMessage.first().content;
 
-  const response = await msg.channel.awaitMessages(filter, { max: 1 });
-  const responseMsg = response.first();
-  messageData.channelId = responseMsg.content;
+      if (response.toLowerCase() === "done") {
+        console.log("DONE");
+        break;
+      }
+      if (response.toLowerCase() === "cancel") {
+        cancelled = true;
+        console.log("CANCELLED: " + cancelled);
+        break;
+      }
+      /* If the space is omitted, the reaction and role can't be separated - error message and continue to next iteration */
+      if (response.split(" ").length < 2) {
+        const errorMsg = await msg.channel.send(
+          "Incorrect emoji and role pairing. Please write it in the format `:emoji: roleName`\nRemember the space between the two!"
+        );
+        errorMsg.delete({ timeout: 10000 });
+        continue;
+      }
 
-  if (responseMsg.mentions.channels.size > 0) {
-    messageData.channelId = responseMsg.mentions.channels.first().id;
-  }
+      /* Expected message format: `:emojiName: role name here` */
+      const reactionAndRole = response.split(" ");
+      const reaction = reactionAndRole[0];
+      const roleNameArray = reactionAndRole.slice(1, reactionAndRole.length);
+      const roleName = roleNameArray.join(" ");
 
-  const targetChannel = msg.guild.channels.cache.get(messageData.channelId);
-  const reactionMessage = await targetChannel.send(embed);
-  messageData.id = reactionMessage.id;
-  messageData.reactions.forEach((r) => {
-    reactionMessage.react(r);
-  });
+      messageData.reactions.push(reaction);
+      messageData.roles.push(roleName);
 
-  /* INSERTs the data into the database as a new entry. Returns boolean value dependent on query success. */
-  const entrySuccessful = await addReactionMessage({ ...messageData });
+      embed.setDescription(`${embed.description}\n${reaction} - ${roleName}`);
+      embedPreview.edit(embed);
+      embedPreview.react(reaction);
+    }
 
-  if (entrySuccessful) {
-    msg.channel.send("Message successfully created!");
-  }
-  if (!entrySuccessful) {
+    if (cancelled) {
+      msg.channel.send("Message creation cancelled.");
+      return;
+    }
+
+    /*
+    Requests that the user specifies a channel to send the embed to. Collects next user message
+    which should mention the channel or contain its ID. Embed then sent to given channel and
+    reactions added to it.
+    */
     msg.channel.send(
-      "Issue adding the message to the database. Please try again."
+      "Which channel would you like me to send it to? Mention/link it or paste the channel ID."
+    );
+
+    /* Loop ensures that a valid channel has been selected to prevent error and user having to start again. */
+    let targetChannel;
+    while (true) {
+      const response = await msg.channel.awaitMessages(filter, { max: 1 });
+      const responseMsg = response.first();
+
+      if (responseMsg.content.toLowerCase() === "cancel") {
+        msg.channel.send("Message creation cancelled.");
+        return;
+      }
+
+      messageData.channelId = responseMsg.content;
+
+      if (responseMsg.mentions.channels.size > 0) {
+        messageData.channelId = responseMsg.mentions.channels.first().id;
+      }
+
+      targetChannel = msg.guild.channels.cache.get(messageData.channelId);
+      if (targetChannel === undefined) {
+        msg.channel.send("Invalid channel - please try again.");
+        continue;
+      }
+      break;
+    }
+    const reactionMessage = await targetChannel.send(embed);
+    messageData.id = reactionMessage.id;
+    messageData.reactions.forEach((r) => {
+      reactionMessage.react(r);
+    });
+
+    /* INSERTs the data into the database as a new entry. Returns boolean value dependent on query success. */
+    const entrySuccessful = await addReactionMessage({ ...messageData });
+
+    if (entrySuccessful) {
+      msg.channel.send("Message successfully created!");
+    }
+    if (!entrySuccessful) {
+      msg.channel.send(
+        "Issue adding the message to the database. Please try again."
+      );
+    }
+
+    /* Errors are logged in console and personal bot log channel. User notified of error. */
+  } catch (err) {
+    console.log(err);
+    botLogChannel.send(
+      `There was an error in server: **${msg.guild.name}**\nChannel Name/ID: **${msg.channel.name}/${msg.channel.id}**\n\n${err}.`
+    );
+    msg.channel.send(
+      "Unfortunately, there was an error creating the message. Please make sure you're following the instructions correctly. If you are and this problem persists, then there's probably something wrong with the bot, so please contact me: Teeenbe#1567"
     );
   }
 });
@@ -150,14 +179,27 @@ bot.on("messageReactionAdd", async (reaction, user) => {
 
   /* Determines which role the reaction corresponds to based on the index of each (should match). */
   const index = messageReactions.findIndex((r) => {
+    /* Check for custom emoji. */
     if (r.charAt(0) === "<") {
       const emojiData = r.split(":");
       let emojiId = emojiData[2];
       emojiId = emojiId.slice(0, emojiId.length - 1);
       r = bot.emojis.cache.get(emojiId);
+      return r.name.toLowerCase() === reaction.emoji.name.toLowerCase();
     }
-    return r.name.toLowerCase() === reaction.emoji.name.toLowerCase();
+
+    return r === reaction.emoji.name;
   });
+
+  if (index === -1) {
+    user.send(
+      "It seems there's an issue with the bot and your role couldn't be added, sorry! Please contact a staff member so that they can take a look!"
+    );
+    botLogChannel.send(
+      `Bot has returned \`index\` as \`-1\` in server: ${guild.name}`
+    );
+  }
+
   const roleName = messageRoles.find((r, i) => i === index);
   const role = guild.roles.cache.find(
     (r) => r.name.toLowerCase() === roleName.toLowerCase()
