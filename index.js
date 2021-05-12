@@ -21,8 +21,8 @@ let botLogChannel;
 bot.login(TOKEN);
 
 bot.once("ready", () => {
-  console.log("Testing ready to go.");
-  bot.user.setActivity("with some new code");
+  console.log("Booted up.");
+  bot.user.setActivity("with your mum.");
   botLogChannel = bot.channels.cache.get(LOG_CHANNEL_ID);
 });
 
