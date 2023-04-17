@@ -1,21 +1,16 @@
 {
-  "name": "7333n83",
+  "name": "7333n83-v13",
   "version": "1.0.0",
-  "description": "Custom Discord bot.",
+  "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node -r dotenv/config index.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "create-table": "node -r dotenv/config ./db/scripts/create-table.js",
-    "drop-table": "node -r dotenv/config ./db/scripts/drop-table.js",
-    "read-table": "node -r dotenv/config ./db/scripts/read-table.js",
-    "populate-table": "node -r dotenv/config ./db/scripts/populate-table.js"
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "discord.js": "^12.5.1",
-    "dotenv": "^8.2.0",
-    "mysql2": "^2.2.5"
+    "discord.js": "^14.9.0",
+    "dotenv": "^16.0.3"
   }
 }
