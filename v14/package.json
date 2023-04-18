@@ -1,16 +1,17 @@
 {
-  "name": "7333n83-v13",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "start": "node -r dotenv/config index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "discord.js": "^14.9.0",
-    "dotenv": "^16.0.3"
-  }
+    "name": "7333n83-v13",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "start": "node -r dotenv/config index.js",
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "deploy-commands": "node -r dotenv/config scripts/deploy-commands.js"
+    },
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "discord.js": "^14.9.0",
+        "dotenv": "^16.0.3"
+    }
 }
