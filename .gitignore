@@ -1,2 +1,5 @@
 node_modules/
 .env
+commands/in-test/
+ideation.txt
+test-data.js
