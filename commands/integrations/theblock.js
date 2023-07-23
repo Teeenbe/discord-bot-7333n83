@@ -1,6 +1,11 @@
 const { SlashCommandBuilder } = require("discord.js");
 const constants = require("../../constants.json");
-const testData = require("../../test-data");
+
+// QUERIES
+const {
+    createAccountLink,
+    getExistingLinkByDiscordId,
+} = require("../../db/queries/theblock");
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -17,24 +22,19 @@ module.exports = {
     deployGlobally: true,
 
     async execute(interaction) {
-        await interaction.deferReply({ ephemeral: false });
+        await interaction.deferReply({ ephemeral: true });
 
-        // If user does not have the relevant role, notify and early return
+        // If user does not have the required role, notify and early return
         if (
-            interaction.member._roles.includes(
+            !interaction.member._roles.includes(
                 constants.serverRoleIds.ytGoldMember
             )
         ) {
             return await interaction.followUp({
                 content: `You must be a <@&${constants.serverRoleIds.ytGoldMember}> to join the Block. Head on over to https://www.youtube.com/@GizzyGazza and click 'Join' if you wish to know more!\n<@${interaction.user.id}>`,
-                ephemeral: false,
+                ephemeral: true,
             });
         }
-
-        // TODO: Remove
-        await interaction.followUp(
-            `(CONSOLE LOG): User has the <@&${constants.serverRoleIds.ytGoldMember}> role.`
-        );
 
         let accountLinkId;
 
@@ -44,28 +44,39 @@ module.exports = {
         );
 
         if (existingLinkId.alreadyExists) {
-            accountLinkId = existingLinkId.id;
+            const linkedMinecraftUsername =
+                existingLinkId.data.minecraftUsername;
+
+            // Check if user has already linked their accounts
+            if (
+                linkedMinecraftUsername === null ||
+                linkedMinecraftUsername === undefined
+            ) {
+                accountLinkId = existingLinkId.data._id;
+            } else {
+                return await interaction.followUp({
+                    content: `You have already linked your Discord to the following Minecraft account: **${linkedMinecraftUsername}**`,
+                    ephemeral: true,
+                });
+            }
+
+            // If no existing account link, create one
         } else {
-            accountLinkId = await createAccountLink(
+            accountLinkId = await createNewAccountLink(
                 interaction.user.id,
                 interaction
             );
         }
 
         await interaction.followUp({
-            content: `Please join the Block Minecraft server and run the following command:\n\n\`/discordlink ${accountLinkId}\``,
-            ephemeral: false,
+            content: `Please join the Barn Life Minecraft server and run the following command:\n\n\`/discordlink ${accountLinkId}\``,
+            ephemeral: true,
         });
     },
 };
 
-const createAccountLink = async (userId, interaction) => {
+const createNewAccountLink = async (userId) => {
     const accountLinkId = crypto.randomUUID();
-
-    // TODO: Remove and replace with DB call
-    await interaction.followUp(
-        `(CONSOLE LOG): Link ID created for <@${userId}>`
-    );
 
     const newUserRecord = {
         _id: accountLinkId,
@@ -73,34 +84,22 @@ const createAccountLink = async (userId, interaction) => {
         minecraftUsername: null,
     };
 
-    testData.push(newUserRecord);
-
-    console.log(testData);
+    await createAccountLink(newUserRecord);
 
     return accountLinkId;
 };
 
-const checkForExistingLink = async (userId, interaction) => {
-    // TODO: Remove and replace with DB call
-    await interaction.followUp(
-        `(CONSOLE LOG): Checking if link ID exists for <@${userId}>`
-    );
-    console.log(testData);
-
-    const response = testData.find((user) => user.discordId === userId);
+const checkForExistingLink = async (userId) => {
+    const response = await getExistingLinkByDiscordId(userId);
 
     let existingLinkId = {
         alreadyExists: false,
-        id: "",
+        data: {},
     };
 
-    if (response !== undefined) {
+    if (response !== null && response !== undefined) {
         existingLinkId.alreadyExists = true;
-        existingLinkId.id = response._id;
-        // TODO: Remove
-        await interaction.followUp(
-            `(CONSOLE LOG): Existing link ID found for <@${userId}>`
-        );
+        existingLinkId.data = response;
     }
 
     return existingLinkId;
