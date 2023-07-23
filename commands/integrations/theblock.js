@@ -26,7 +26,7 @@ module.exports = {
 
         // If user does not have the required role, notify and early return
         if (
-            !interaction.member._roles.includes(
+            interaction.member._roles.includes(
                 constants.serverRoleIds.ytGoldMember
             )
         ) {
@@ -38,10 +38,7 @@ module.exports = {
 
         let accountLinkId;
 
-        const existingLinkId = await checkForExistingLink(
-            interaction.user.id,
-            interaction
-        );
+        const existingLinkId = await checkForExistingLink(interaction.user.id);
 
         if (existingLinkId.alreadyExists) {
             const linkedMinecraftUsername =
@@ -75,7 +72,7 @@ module.exports = {
     },
 };
 
-const createNewAccountLink = async (userId) => {
+const createNewAccountLink = async (userId, interaction) => {
     const accountLinkId = crypto.randomUUID();
 
     const newUserRecord = {
@@ -85,6 +82,12 @@ const createNewAccountLink = async (userId) => {
     };
 
     await createAccountLink(newUserRecord);
+    const logChannel = interaction.client.channels.cache.get(
+        process.env.LOG_CHANNEL_ID
+    );
+    logChannel.send(
+        `<@${userId}> has run \`/theblock link\` and created a link.`
+    );
 
     return accountLinkId;
 };
