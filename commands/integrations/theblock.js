@@ -26,7 +26,7 @@ module.exports = {
 
         // If user does not have the required role, notify and early return
         if (
-            interaction.member._roles.includes(
+            !interaction.member._roles.includes(
                 constants.serverRoleIds.ytGoldMember
             )
         ) {
